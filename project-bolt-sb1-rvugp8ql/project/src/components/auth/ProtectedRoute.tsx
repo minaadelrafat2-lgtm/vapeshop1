@@ -10,9 +10,9 @@ export function ProtectedRoute({ children, requireStaff = false }: { children: R
   const [profileChecked, setProfileChecked] = useState(false);
 
   useEffect(() => {
-    if (!loading && user && profile) setProfileChecked(true);
+    if (!loading && user) setProfileChecked(true);
     if (!loading && !user) setProfileChecked(false);
-  }, [loading, user, profile]);
+  }, [loading, user]);
 
   if (loading || (user && requireStaff && !profileChecked)) {
     return (

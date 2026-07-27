@@ -1,29 +1,43 @@
 import { supabase } from '@/lib/supabase';
 import type { Profile, UserRole } from '@/types';
 
-export const STAFF_ROLES: UserRole[] = ['admin', 'manager', 'staff'];
+export const STAFF_ROLES: UserRole[] = [
+  'admin', 'manager', 'staff',
+  'super_admin', 'company_owner', 'general_manager',
+  'warehouse_manager', 'branch_manager', 'inventory_employee',
+  'sales_employee', 'marketing', 'accountant', 'customer_support',
+];
 
 export function isStaffRole(role: UserRole | undefined | null): boolean {
   return !!role && STAFF_ROLES.includes(role);
 }
 
 export function isAdminRole(role: UserRole | undefined | null): boolean {
-  return role === 'admin';
+  return role === 'admin' || role === 'super_admin' || role === 'company_owner';
 }
 
 export async function fetchProfile(userId: string): Promise<Profile | null> {
-  const { data } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle();
+  const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle();
+  if (error) return null;
   return data as Profile | null;
 }
 
 export async function checkPermission(permission: string): Promise<boolean> {
-  const { data } = await supabase.rpc('has_permission', { p_permission: permission });
-  return data === true;
+  try {
+    const { data } = await supabase.rpc('has_permission', { p_permission: permission });
+    return data === true;
+  } catch {
+    return false;
+  }
 }
 
 export async function checkIsStaff(): Promise<boolean> {
-  const { data } = await supabase.rpc('is_staff');
-  return data === true;
+  try {
+    const { data } = await supabase.rpc('is_staff');
+    return data === true;
+  } catch {
+    return false;
+  }
 }
 
 export async function logActivity(
@@ -68,26 +82,33 @@ const FAILED_LOGIN_KEY = 'luxe_failed_logins';
 const LOCK_THRESHOLD = 5;
 
 export function recordFailedLogin(email: string): number {
-  const raw = localStorage.getItem(FAILED_LOGIN_KEY);
-  const store: Record<string, number> = raw ? JSON.parse(raw) : {};
+  let store: Record<string, number> = {};
+  try {
+    const raw = localStorage.getItem(FAILED_LOGIN_KEY);
+    store = raw ? JSON.parse(raw) : {};
+  } catch { store = {}; }
   store[email] = (store[email] ?? 0) + 1;
   localStorage.setItem(FAILED_LOGIN_KEY, JSON.stringify(store));
   return store[email];
 }
 
 export function clearFailedLogins(email: string): void {
-  const raw = localStorage.getItem(FAILED_LOGIN_KEY);
-  if (!raw) return;
-  const store: Record<string, number> = JSON.parse(raw);
-  delete store[email];
-  localStorage.setItem(FAILED_LOGIN_KEY, JSON.stringify(store));
+  try {
+    const raw = localStorage.getItem(FAILED_LOGIN_KEY);
+    if (!raw) return;
+    const store: Record<string, number> = JSON.parse(raw);
+    delete store[email];
+    localStorage.setItem(FAILED_LOGIN_KEY, JSON.stringify(store));
+  } catch { /* ignore */ }
 }
 
 export function isAccountLocked(email: string): boolean {
-  const raw = localStorage.getItem(FAILED_LOGIN_KEY);
-  if (!raw) return false;
-  const store: Record<string, number> = JSON.parse(raw);
-  return (store[email] ?? 0) >= LOCK_THRESHOLD;
+  try {
+    const raw = localStorage.getItem(FAILED_LOGIN_KEY);
+    if (!raw) return false;
+    const store: Record<string, number> = JSON.parse(raw);
+    return (store[email] ?? 0) >= LOCK_THRESHOLD;
+  } catch { return false; }
 }
 
 export { LOCK_THRESHOLD };

@@ -1,0 +1,6 @@
+import{c as a,j as e,L as s,a as t,t as n}from"./index-BXh8vETh.js";/**
+ * @license lucide-react v0.344.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */const o=a("Home",[["path",{d:"m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z",key:"y5dka4"}],["polyline",{points:"9 22 9 12 15 12 15 22",key:"e2us08"}]]);function l(){return e.jsx("div",{className:"section py-20 min-h-[60vh] flex items-center",children:e.jsxs("div",{className:"max-w-lg mx-auto text-center",children:[e.jsx("p",{className:"text-[120px] md:text-[180px] font-display font-bold text-gradient-gold leading-none",children:"404"}),e.jsx("h1",{className:"text-2xl md:text-3xl font-display font-semibold text-ink-50 mt-4",children:"Page Not Found"}),e.jsx("p",{className:"mt-3 text-ink-400",children:"The page you're looking for doesn't exist or has been moved. Let's get you back on track."}),e.jsxs("div",{className:"mt-8 flex flex-wrap gap-3 justify-center",children:[e.jsx(s,{to:"/",children:e.jsxs(t,{children:[e.jsx(o,{className:"w-4 h-4"})," Back Home"]})}),e.jsx(s,{to:"/shop",children:e.jsxs(t,{variant:"secondary",children:[e.jsx(n,{className:"w-4 h-4"})," Browse Shop"]})})]})]})})}export{l as default};

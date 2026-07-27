@@ -8,7 +8,7 @@ import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { EmptyState } from '@/components/ui/Card';
-import { formatCurrency, generateOrderNumber } from '@/lib/utils';
+import { formatCurrency } from '@/lib/utils';
 
 export default function Checkout() {
   const { lines, subtotal, clear } = useCart();
@@ -27,31 +27,39 @@ export default function Checkout() {
   const tax = +(subtotal * 0.08).toFixed(2);
   const total = subtotal + shipping + tax;
 
+  const validateInfo = (): boolean => {
+    if (!form.email || !form.first || !form.last || !form.address || !form.city || !form.state || !form.zip) {
+      toast('Please fill in all required fields', 'error');
+      return false;
+    }
+    return true;
+  };
+
   const placeOrder = async () => {
     setPlacing(true);
-    const orderNumber = generateOrderNumber();
-    const { data: order } = await supabase.from('orders').insert({
-      order_number: orderNumber,
-      user_id: user?.id ?? null,
-      status: 'pending',
-      payment_status: 'paid',
-      subtotal, shipping_total: shipping, tax_total: tax, grand_total: total,
-      shipping_address: { line1: form.address, city: form.city, state: form.state, zip: form.zip, country: form.country, name: `${form.first} ${form.last}` },
-    }).select('*').single();
-    if (order) {
-      await supabase.from('order_items').insert(lines.map((l) => ({
-        order_id: order.id, product_id: l.product.id, product_name: l.product.name,
-        variant_name: l.variant?.value ?? null, sku: l.variant?.sku ?? l.product.sku,
-        price: l.variant?.price ?? l.product.price, quantity: l.cart.quantity,
-        line_total: (l.variant?.price ?? l.product.price) * l.cart.quantity,
-      })));
+    try {
+      const items = lines.map((l) => ({
+        product_id: l.product.id,
+        quantity: l.cart.quantity,
+      }));
+      const shippingAddress = {
+        line1: form.address, city: form.city, state: form.state, zip: form.zip,
+        country: form.country, name: `${form.first} ${form.last}`,
+      };
+      const { data, error } = await supabase.rpc('place_customer_order', {
+        p_user_id: user?.id ?? null,
+        p_items: items as unknown as never,
+        p_shipping_address: shippingAddress as unknown as never,
+      });
+      if (error) throw error;
       await clear();
-      setOrderId(orderNumber);
+      setOrderId((data as { order_number: string })?.order_number ?? '');
       setStep('done');
-    } else {
-      toast('Could not place order. Try again.', 'error');
+    } catch {
+      toast('Could not place order. Please try again.', 'error');
+    } finally {
+      setPlacing(false);
     }
-    setPlacing(false);
   };
 
   if (step === 'done') {
@@ -80,7 +88,6 @@ export default function Checkout() {
       <h1 className="text-3xl font-display font-semibold text-ink-50 mb-8">Checkout</h1>
       <div className="grid lg:grid-cols-[1fr_380px] gap-8">
         <div className="space-y-6">
-          {/* Steps */}
           <div className="flex items-center gap-2 text-sm mb-2">
             <span className={`flex items-center gap-1.5 ${step === 'info' ? 'text-gold-300' : 'text-ink-400'}`}><span className="w-6 h-6 rounded-full bg-gold-500/20 flex items-center justify-center text-xs">1</span> Information</span>
             <span className="text-ink-600">—</span>
@@ -90,18 +97,18 @@ export default function Checkout() {
           {step === 'info' && (
             <div className="glass-card p-6 space-y-4">
               <h3 className="font-semibold text-ink-50">Contact &amp; Shipping</h3>
-              <Input label="Email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
+              <Input label="Email" type="email" name="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
               <div className="grid sm:grid-cols-2 gap-4">
-                <Input label="First name" value={form.first} onChange={(e) => setForm({ ...form, first: e.target.value })} required />
-                <Input label="Last name" value={form.last} onChange={(e) => setForm({ ...form, last: e.target.value })} required />
+                <Input label="First name" name="first" value={form.first} onChange={(e) => setForm({ ...form, first: e.target.value })} required />
+                <Input label="Last name" name="last" value={form.last} onChange={(e) => setForm({ ...form, last: e.target.value })} required />
               </div>
-              <Input label="Address" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} required />
+              <Input label="Address" name="address" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} required />
               <div className="grid sm:grid-cols-3 gap-4">
-                <Input label="City" value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} required />
-                <Input label="State" value={form.state} onChange={(e) => setForm({ ...form, state: e.target.value })} required />
-                <Input label="ZIP" value={form.zip} onChange={(e) => setForm({ ...form, zip: e.target.value })} required />
+                <Input label="City" name="city" value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} required />
+                <Input label="State" name="state" value={form.state} onChange={(e) => setForm({ ...form, state: e.target.value })} required />
+                <Input label="ZIP" name="zip" value={form.zip} onChange={(e) => setForm({ ...form, zip: e.target.value })} required />
               </div>
-              <Button onClick={() => setStep('payment')} className="w-full">Continue to Payment</Button>
+              <Button onClick={() => { if (validateInfo()) setStep('payment'); }} className="w-full">Continue to Payment</Button>
             </div>
           )}
 
@@ -109,10 +116,10 @@ export default function Checkout() {
             <div className="glass-card p-6 space-y-4">
               <div className="flex items-center gap-2 text-ink-300 text-sm"><Lock className="w-4 h-4 text-accent-400" /> Secure payment — your data is encrypted</div>
               <h3 className="font-semibold text-ink-50">Payment Details</h3>
-              <Input label="Card number" value={form.card} onChange={(e) => setForm({ ...form, card: e.target.value })} placeholder="4242 4242 4242 4242" required />
+              <Input label="Card number" name="card" value={form.card} onChange={(e) => setForm({ ...form, card: e.target.value })} placeholder="4242 4242 4242 4242" required />
               <div className="grid grid-cols-2 gap-4">
-                <Input label="Expiry" value={form.expiry} onChange={(e) => setForm({ ...form, expiry: e.target.value })} placeholder="MM/YY" required />
-                <Input label="CVC" value={form.cvc} onChange={(e) => setForm({ ...form, cvc: e.target.value })} placeholder="123" required />
+                <Input label="Expiry" name="expiry" value={form.expiry} onChange={(e) => setForm({ ...form, expiry: e.target.value })} placeholder="MM/YY" required />
+                <Input label="CVC" name="cvc" value={form.cvc} onChange={(e) => setForm({ ...form, cvc: e.target.value })} placeholder="123" required />
               </div>
               <div className="flex gap-3">
                 <Button variant="secondary" onClick={() => setStep('info')}>Back</Button>
@@ -123,7 +130,6 @@ export default function Checkout() {
           )}
         </div>
 
-        {/* Summary */}
         <div className="glass-card p-6 h-fit lg:sticky lg:top-24">
           <h3 className="text-lg font-semibold text-ink-50 mb-4">Order Summary</h3>
           <div className="space-y-3 max-h-64 overflow-auto mb-4">

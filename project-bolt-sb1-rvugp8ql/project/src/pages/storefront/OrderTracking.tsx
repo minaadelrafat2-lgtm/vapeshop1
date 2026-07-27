@@ -74,19 +74,27 @@ export default function OrderTracking() {
             </div>
 
             {/* Progress */}
-            <div className="flex items-center justify-between mb-2">
-              {STEPS.map((s, i) => (
-                <div key={s} className="flex flex-col items-center flex-1">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center transition ${i <= currentStep ? 'bg-gold-sheen text-ink-950' : 'bg-ink-800 text-ink-500'}`}>
-                    {i < currentStep ? <CheckCircle2 className="w-5 h-5" /> : i === 0 ? <Clock className="w-5 h-5" /> : i === 1 ? <Package className="w-5 h-5" /> : i === 2 ? <Truck className="w-5 h-5" /> : <MapPin className="w-5 h-5" />}
-                  </div>
-                  <span className="text-xs mt-2 capitalize text-ink-300">{s}</span>
+            {order.status === 'cancelled' ? (
+              <div className="glass-card p-4 mb-4 text-center">
+                <Badge color="error">Order Cancelled</Badge>
+              </div>
+            ) : (
+              <>
+                <div className="flex items-center justify-between mb-2">
+                  {STEPS.map((s, i) => (
+                    <div key={s} className="flex flex-col items-center flex-1">
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center transition ${i <= currentStep ? 'bg-gold-sheen text-ink-950' : 'bg-ink-800 text-ink-500'}`}>
+                        {i < currentStep ? <CheckCircle2 className="w-5 h-5" /> : i === 0 ? <Clock className="w-5 h-5" /> : i === 1 ? <Package className="w-5 h-5" /> : i === 2 ? <Truck className="w-5 h-5" /> : <MapPin className="w-5 h-5" />}
+                      </div>
+                      <span className="text-xs mt-2 capitalize text-ink-300">{s}</span>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-            <div className="relative h-1 bg-ink-800 rounded-full overflow-hidden -mt-7 mb-3">
-              <div className="absolute inset-y-0 left-0 bg-gold-sheen transition-all" style={{ width: `${currentStep >= 0 ? (currentStep / (STEPS.length - 1)) * 100 : 0}%` }} />
-            </div>
+                <div className="relative h-1 bg-ink-800 rounded-full overflow-hidden -mt-7 mb-3">
+                  <div className="absolute inset-y-0 left-0 bg-gold-sheen transition-all" style={{ width: `${currentStep >= 0 ? (currentStep / (STEPS.length - 1)) * 100 : 0}%` }} />
+                </div>
+              </>
+            )}
 
             {order.tracking_number && (
               <p className="text-sm text-ink-300 mt-4">Tracking number: <span className="font-mono text-gold-300">{order.tracking_number}</span> ({order.carrier})</p>

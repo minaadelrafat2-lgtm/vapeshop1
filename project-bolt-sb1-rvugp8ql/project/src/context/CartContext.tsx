@@ -34,7 +34,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
     else {
       setItems([]); setProducts({}); setVariants({}); setLoading(false); return;
     }
-    const { data } = await q.order('created_at', { ascending: false });
+    const { data, error } = await q.order('created_at', { ascending: false });
+    if (error) { setItems([]); setLoading(false); return; }
     const cart = (data ?? []) as CartItem[];
     setItems(cart);
     if (cart.length) {
@@ -44,16 +45,51 @@ export function CartProvider({ children }: { children: ReactNode }) {
         supabase.from('products').select('*').in('id', pIds),
         vIds.length ? supabase.from('product_variants').select('*').in('id', vIds) : Promise.resolve({ data: [] }),
       ]);
-      setProducts(Object.fromEntries((pRows ?? []).map((p) => [p.id, p])));
-      setVariants(Object.fromEntries((vRows ?? []).map((v) => [v.id, v])));
+      setProducts(Object.fromEntries((pRows ?? []).map((p) => [p.id, p as unknown as Product])));
+      setVariants(Object.fromEntries((vRows ?? []).map((v) => [v.id, v as unknown as ProductVariant])));
     } else {
       setProducts({}); setVariants({});
     }
     setLoading(false);
   };
 
+  // Merge guest cart into user cart on login
+  useEffect(() => {
+    if (!user) return;
+    const sid = getSessionId();
+    (async () => {
+      const { data: guestItems } = await supabase
+        .from('cart_items')
+        .select('*')
+        .eq('session_id', sid)
+        .is('user_id', null);
+      if (guestItems && guestItems.length > 0) {
+        for (const gi of guestItems) {
+          const existing = items.find(
+            (i) => i.product_id === gi.product_id && i.variant_id === gi.variant_id,
+          );
+          if (existing) {
+            await supabase
+              .from('cart_items')
+              .update({ quantity: existing.quantity + gi.quantity })
+              .eq('id', existing.id);
+            await supabase.from('cart_items').delete().eq('id', gi.id);
+          } else {
+            await supabase
+              .from('cart_items')
+              .update({ user_id: user.id, session_id: null })
+              .eq('id', gi.id);
+          }
+        }
+        fetchCart(user.id, null);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
+
   useEffect(() => {
     fetchCart(user?.id ?? null, session);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id, session]);
 
   const add = async (product: Product, variant?: ProductVariant | null, qty = 1) => {
@@ -66,30 +102,42 @@ export function CartProvider({ children }: { children: ReactNode }) {
     else payload.session_id = getSessionId();
     const { error } = await supabase.from('cart_items').insert(payload);
     if (error) {
-      // try update existing line qty
       let q = supabase.from('cart_items').select('id,quantity').eq('product_id', product.id);
       if (variant) q = q.eq('variant_id', variant.id); else q = q.is('variant_id', null);
       if (user) q = q.eq('user_id', user.id); else q = q.eq('session_id', getSessionId()).is('user_id', null);
       const { data } = await q.maybeSingle();
-      if (data) await supabase.from('cart_items').update({ quantity: data.quantity + qty }).eq('id', data.id);
+      if (data) {
+        const { error: updateError } = await supabase
+          .from('cart_items')
+          .update({ quantity: (data as { quantity: number }).quantity + qty })
+          .eq('id', (data as { id: string }).id);
+        if (updateError) throw new Error('Failed to update cart');
+      }
     }
-    fetchCart(user?.id ?? null, session);
+    await fetchCart(user?.id ?? null, session);
   };
 
   const updateQty = async (cartId: string, qty: number) => {
     if (qty <= 0) return remove(cartId);
-    await supabase.from('cart_items').update({ quantity: qty }).eq('id', cartId);
+    const { error } = await supabase.from('cart_items').update({ quantity: qty }).eq('id', cartId);
+    if (error) throw new Error('Failed to update quantity');
     setItems((prev) => prev.map((i) => (i.id === cartId ? { ...i, quantity: qty } : i)));
   };
 
   const remove = async (cartId: string) => {
-    await supabase.from('cart_items').delete().eq('id', cartId);
+    const { error } = await supabase.from('cart_items').delete().eq('id', cartId);
+    if (error) throw new Error('Failed to remove item');
     setItems((prev) => prev.filter((i) => i.id !== cartId));
   };
 
   const clear = async () => {
-    if (user) await supabase.from('cart_items').delete().eq('user_id', user.id);
-    else if (session) await supabase.from('cart_items').delete().eq('session_id', session).is('user_id', null);
+    if (user) {
+      const { error } = await supabase.from('cart_items').delete().eq('user_id', user.id);
+      if (error) throw new Error('Failed to clear cart');
+    } else if (session) {
+      const { error } = await supabase.from('cart_items').delete().eq('session_id', session).is('user_id', null);
+      if (error) throw new Error('Failed to clear cart');
+    }
     setItems([]);
   };
 

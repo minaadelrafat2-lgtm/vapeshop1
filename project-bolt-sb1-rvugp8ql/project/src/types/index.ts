@@ -383,7 +383,7 @@ export interface Notification {
 // Backend extension types (migrations 0002–0004)
 // ============================================================
 
-export type UserRole = 'customer' | 'staff' | 'manager' | 'admin';
+export type UserRole = 'customer' | 'staff' | 'manager' | 'admin' | 'super_admin' | 'company_owner' | 'general_manager' | 'warehouse_manager' | 'branch_manager' | 'inventory_employee' | 'sales_employee' | 'marketing' | 'accountant' | 'customer_support';
 export type UserStatus = 'active' | 'suspended' | 'locked';
 
 export interface Profile {
