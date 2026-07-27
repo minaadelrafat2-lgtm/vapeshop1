@@ -147,6 +147,9 @@ export interface Order {
   placed_at: string;
   created_at: string;
   updated_at: string;
+  branch_id: string | null;
+  source: 'website' | 'pos' | 'phone' | 'branch_transfer';
+  pos_operator_id: string | null;
 }
 
 export interface OrderItem {
@@ -741,4 +744,70 @@ export interface InventoryTimelineEntry {
   branch_name: string | null;
   created_by: string | null;
   created_at: string;
+}
+
+// ============================================================
+// Sales Management extension types (migration 0007)
+// ============================================================
+
+export type OrderTimelineEvent =
+  | 'created' | 'processing' | 'paid' | 'payment_failed' | 'fulfilled'
+  | 'shipped' | 'delivered' | 'cancelled' | 'returned' | 'refund_issued' | 'status_changed';
+
+export interface OrderTimelineEntry {
+  id: string;
+  order_id: string;
+  event: OrderTimelineEvent;
+  description: string | null;
+  actor_id: string | null;
+  metadata: Record<string, unknown> | null;
+  created_at: string;
+}
+
+export type OrderReturnStatus = 'pending' | 'approved' | 'rejected' | 'received' | 'restocked' | 'cancelled';
+export type OrderReturnReason = 'damaged' | 'wrong_item' | 'not_as_described' | 'changed_mind' | 'quality_issue' | 'other';
+
+export interface OrderReturn {
+  id: string;
+  return_number: string;
+  order_id: string;
+  customer_id: string | null;
+  user_id: string | null;
+  reason: OrderReturnReason;
+  status: OrderReturnStatus;
+  restocked: boolean;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface OrderReturnItem {
+  id: string;
+  return_id: string;
+  order_item_id: string;
+  product_id: string | null;
+  quantity: number;
+  refund_amount: number;
+  created_at: string;
+}
+
+export type OrderRefundStatus = 'pending' | 'completed' | 'failed' | 'cancelled';
+export type OrderRefundReason = 'customer_request' | 'damaged_goods' | 'wrong_item' | 'overcharge' | 'cancellation' | 'other';
+
+export interface OrderRefund {
+  id: string;
+  refund_number: string;
+  order_id: string;
+  payment_id: string | null;
+  return_id: string | null;
+  amount: number;
+  currency: string;
+  reason: OrderRefundReason;
+  status: OrderRefundStatus;
+  processed_by: string | null;
+  processed_at: string | null;
+  gateway_reference: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
 }

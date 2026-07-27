@@ -32,6 +32,7 @@ import NotFound from '@/pages/storefront/NotFound';
 // Admin pages
 import AdminDashboard from '@/pages/admin/Dashboard';
 import AdminOrders from '@/pages/admin/AdminOrders';
+import AdminReturnsRefunds from '@/pages/admin/AdminReturnsRefunds';
 import AdminProducts from '@/pages/admin/AdminProducts';
 import AdminCategories from '@/pages/admin/AdminCategories';
 import AdminCustomers from '@/pages/admin/AdminCustomers';
@@ -94,6 +95,7 @@ export default function App() {
                 <Route path="/admin" element={<ProtectedRoute requireStaff><AdminLayout /></ProtectedRoute>}>
                   <Route index element={<AdminDashboard />} />
                   <Route path="orders" element={<AdminOrders />} />
+                  <Route path="returns-refunds" element={<AdminReturnsRefunds />} />
                   <Route path="products" element={<AdminProducts />} />
                   <Route path="categories" element={<AdminCategories />} />
                   <Route path="customers" element={<AdminCustomers />} />

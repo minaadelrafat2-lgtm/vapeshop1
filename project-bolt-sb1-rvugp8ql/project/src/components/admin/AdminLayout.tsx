@@ -4,6 +4,7 @@ import {
   LayoutDashboard, ShoppingCart, Package, FolderTree, Users, Boxes, Building2,
   UserCog, Truck, BarChart3, Bell, Settings, ShieldCheck, KeyRound, ScrollText,
   Menu, X, LogOut, Search, ChevronDown, Clock, ArrowLeftRight, Warehouse, PackageCheck,
+  RotateCcw,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { cn } from '@/lib/utils';
@@ -13,6 +14,7 @@ const nav = [
   {
     group: 'Commerce', items: [
       { to: '/admin/orders', label: 'Orders', icon: ShoppingCart },
+      { to: '/admin/returns-refunds', label: 'Returns & Refunds', icon: RotateCcw },
       { to: '/admin/products', label: 'Products', icon: Package },
       { to: '/admin/categories', label: 'Categories', icon: FolderTree },
       { to: '/admin/customers', label: 'Customers', icon: Users },

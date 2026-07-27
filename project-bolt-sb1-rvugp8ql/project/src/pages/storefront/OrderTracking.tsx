@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Badge, EmptyState } from '@/components/ui/Card';
-import type { Order, OrderItem } from '@/types';
+import type { Order, OrderItem, OrderTimelineEntry } from '@/types';
 import { formatCurrency, formatDateTime } from '@/lib/utils';
 
 const STEPS = ['pending', 'processing', 'shipped', 'delivered'] as const;
@@ -15,6 +15,7 @@ export default function OrderTracking() {
   const [num, setNum] = useState(params.get('n') ?? '');
   const [order, setOrder] = useState<Order | null>(null);
   const [items, setItems] = useState<OrderItem[]>([]);
+  const [timeline, setTimeline] = useState<OrderTimelineEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
 
@@ -24,9 +25,13 @@ export default function OrderTracking() {
     const { data } = await supabase.from('orders').select('*').eq('order_number', n).maybeSingle();
     setOrder(data as Order | null);
     if (data) {
-      const { data: oi } = await supabase.from('order_items').select('*').eq('order_id', data.id);
-      setItems((oi ?? []) as OrderItem[]);
-    } else setItems([]);
+      const [oiRes, tlRes] = await Promise.all([
+        supabase.from('order_items').select('*').eq('order_id', data.id),
+        supabase.from('order_timeline').select('*').eq('order_id', data.id).order('created_at', { ascending: true }),
+      ]);
+      setItems((oiRes.data ?? []) as OrderItem[]);
+      setTimeline((tlRes.data ?? []) as OrderTimelineEntry[]);
+    } else { setItems([]); setTimeline([]); }
     setLoading(false);
   };
 
@@ -108,6 +113,26 @@ export default function OrderTracking() {
               <span className="text-gold-300">{formatCurrency(order.grand_total)}</span>
             </div>
           </div>
+
+          {timeline.length > 0 && (
+            <div className="glass-card p-6 mt-6">
+              <h3 className="font-semibold text-ink-50 mb-4">Order History</h3>
+              <div className="space-y-3">
+                {timeline.map((t) => (
+                  <div key={t.id} className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-full bg-gold-500/10 flex items-center justify-center text-gold-400 shrink-0">
+                      <Clock className="w-4 h-4" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-ink-100 capitalize">{t.event.replace(/_/g, ' ')}</p>
+                      {t.description && <p className="text-xs text-ink-400">{t.description}</p>}
+                      <p className="text-xs text-ink-500 mt-0.5">{formatDateTime(t.created_at)}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className="text-center mt-6"><Link to="/account"><Button variant="secondary">View all orders</Button></Link></div>
         </div>
